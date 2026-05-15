@@ -1,0 +1,1286 @@
+openapi: "3.1.0"
+info:
+  title: VecTrade API
+  version: 1.0.0
+  description: |
+    Financial data, AI-powered analysis, and trading intelligence.
+
+    ## Authentication
+    All requests require a Bearer token in the Authorization header:
+    ```
+    Authorization: Bearer vq_live_...
+    ```
+
+    ## Rate Limits
+    Response headers include rate limit info:
+    - `X-VQ-RateLimit-Limit` — requests per window
+    - `X-VQ-RateLimit-Remaining` — remaining requests
+    - `X-VQ-RateLimit-Reset` — window reset timestamp (Unix)
+  contact:
+    name: VecTrade API Support
+    email: api@vectrade.io
+    url: https://docs.vectrade.io
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+servers:
+  - url: https://api.vectrade.io/v1
+    description: Production & Sandbox (mode determined by API key prefix)
+
+security:
+  - BearerAuth: []
+
+paths:
+  /vq/quotes/{symbol}:
+    get:
+      operationId: getQuote
+      summary: Get real-time quote
+      tags: [Quotes]
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+          example: AAPL
+        - name: fields
+          in: query
+          schema:
+            type: string
+          description: Comma-separated list of fields to return
+      responses:
+        "200":
+          description: Quote data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quote"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /vq/quotes/batch:
+    get:
+      operationId: getBatchQuotes
+      summary: Get quotes for multiple symbols
+      tags: [Quotes]
+      parameters:
+        - name: symbols
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Comma-separated symbols (max 50)
+          example: AAPL,GOOGL,MSFT
+      responses:
+        "200":
+          description: Batch quote data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Quote"
+
+  /vq/fundamentals/{symbol}:
+    get:
+      operationId: getFundamentals
+      summary: Get company fundamentals
+      tags: [Fundamentals]
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+          example: AAPL
+      responses:
+        "200":
+          description: Fundamental data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Fundamental"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /vq/fundamentals/{symbol}/income-statement:
+    get:
+      operationId: getIncomeStatement
+      summary: Get income statement
+      tags: [Fundamentals]
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [annual, quarterly]
+            default: annual
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 4
+      responses:
+        "200":
+          description: Income statement data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/IncomeStatement"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /vq/fundamentals/{symbol}/balance-sheet:
+    get:
+      operationId: getBalanceSheet
+      summary: Get balance sheet
+      tags: [Fundamentals]
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [annual, quarterly]
+            default: annual
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 4
+      responses:
+        "200":
+          description: Balance sheet data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/BalanceSheet"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /vq/technicals/{symbol}:
+    get:
+      operationId: getTechnicals
+      summary: Get technical indicators
+      tags: [Technicals]
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+          example: AAPL
+        - name: indicators
+          in: query
+          schema:
+            type: string
+          description: Comma-separated indicator names (sma, ema, rsi, macd, bollinger)
+          example: sma,rsi,macd
+        - name: interval
+          in: query
+          schema:
+            type: string
+            enum: [1m, 5m, 15m, 1h, 4h, 1d, 1w, 1M]
+            default: 1d
+        - name: period
+          in: query
+          schema:
+            type: integer
+            default: 14
+      responses:
+        "200":
+          description: Technical indicator data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Technical"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /vq/news:
+    get:
+      operationId: listNews
+      summary: List financial news
+      tags: [News]
+      parameters:
+        - name: symbols
+          in: query
+          schema:
+            type: string
+          description: Filter by symbols (comma-separated)
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: cursor
+          in: query
+          schema:
+            type: string
+          description: Pagination cursor
+      responses:
+        "200":
+          description: News articles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/NewsArticle"
+                  page_info:
+                    $ref: "#/components/schemas/PageInfo"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /vq/news/{id}:
+    get:
+      operationId: getNewsArticle
+      summary: Get a single news article
+      tags: [News]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: News article detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsArticle"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /vq/screener:
+    post:
+      operationId: runScreener
+      summary: Run stock screener
+      tags: [Screener]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScreenerFilters"
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+      responses:
+        "200":
+          description: Screener results (paginated)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ScreenerResult"
+                  page_info:
+                    $ref: "#/components/schemas/PageInfo"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /vq/ai/analyze:
+    post:
+      operationId: analyzeAI
+      summary: AI-powered financial analysis
+      tags: [AI]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [prompt]
+              properties:
+                prompt:
+                  type: string
+                  description: Analysis prompt
+                  example: "Analyze AAPL for long-term hold"
+                symbols:
+                  type: array
+                  items:
+                    type: string
+                  description: Symbols to include in context
+                stream:
+                  type: boolean
+                  default: false
+      responses:
+        "200":
+          description: Analysis response (or SSE stream if stream=true)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AIResponse"
+            text/event-stream:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /vq/webhooks:
+    get:
+      operationId: listWebhooks
+      summary: List webhook subscriptions
+      tags: [Webhooks]
+      responses:
+        "200":
+          description: List of webhooks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Webhook"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createWebhook
+      summary: Create webhook subscription
+      tags: [Webhooks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url, events]
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  description: HTTPS endpoint to receive events
+                events:
+                  type: array
+                  items:
+                    type: string
+                    enum: [quote.update, price.alert, news.published, screener.match]
+                symbols:
+                  type: array
+                  items:
+                    type: string
+                  description: Filter events to specific symbols
+      responses:
+        "201":
+          description: Webhook created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Webhook"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /vq/webhooks/{id}:
+    delete:
+      operationId: deleteWebhook
+      summary: Delete webhook subscription
+      tags: [Webhooks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Webhook deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /vq/options/{symbol}:
+    get:
+      operationId: getOptionsChain
+      summary: Get options chain
+      tags: [Options]
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: expiration
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter by expiration date
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [call, put]
+      responses:
+        "200":
+          description: Options chain data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OptionsChain"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /vq/options/{symbol}/expirations:
+    get:
+      operationId: getOptionsExpirations
+      summary: Get available expiration dates
+      tags: [Options]
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Available expiration dates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: string
+                      format: date
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /vq/analyst/{symbol}/consensus:
+    get:
+      operationId: getAnalystConsensus
+      summary: Get analyst consensus rating
+      tags: [Analyst]
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Analyst consensus data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalystConsensus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /vq/analyst/{symbol}/price-targets:
+    get:
+      operationId: getAnalystPriceTargets
+      summary: Get analyst price targets
+      tags: [Analyst]
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of analyst price targets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PriceTarget"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /vq/analyst/{symbol}/ratings:
+    get:
+      operationId: getAnalystRatings
+      summary: Get recent analyst rating changes
+      tags: [Analyst]
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: List of rating changes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/AnalystRating"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /vq/earnings/{symbol}/history:
+    get:
+      operationId: getEarningsHistory
+      summary: Get historical earnings results
+      tags: [Earnings]
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 8
+      responses:
+        "200":
+          description: Historical earnings data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/EarningsResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /vq/earnings/calendar:
+    get:
+      operationId: getEarningsCalendar
+      summary: Get upcoming earnings calendar
+      tags: [Earnings]
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Earnings calendar entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/EarningsCalendarEntry"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /vq/insider/{symbol}/transactions:
+    get:
+      operationId: getInsiderTransactions
+      summary: Get insider transactions
+      tags: [Insider]
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Insider transaction list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/InsiderTransaction"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /vq/insider/{symbol}/summary:
+    get:
+      operationId: getInsiderSummary
+      summary: Get insider trading summary
+      tags: [Insider]
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Insider trading summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InsiderSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: "vq_live_..."
+
+  schemas:
+    Quote:
+      type: object
+      required: [symbol, price, change, changePct, volume, timestamp]
+      properties:
+        symbol:
+          type: string
+        price:
+          type: number
+        change:
+          type: number
+        changePct:
+          type: number
+        volume:
+          type: integer
+        dayHigh:
+          type: number
+        dayLow:
+          type: number
+        dayOpen:
+          type: number
+        previousClose:
+          type: number
+        marketCap:
+          type: number
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+
+    AIResponse:
+      type: object
+      properties:
+        content:
+          type: string
+        citations:
+          type: array
+          items:
+            type: object
+            properties:
+              source:
+                type: string
+              url:
+                type: string
+        usage:
+          type: object
+          properties:
+            promptTokens:
+              type: integer
+            completionTokens:
+              type: integer
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [message, type]
+          properties:
+            message:
+              type: string
+            type:
+              type: string
+            docs_url:
+              type: string
+        request_id:
+          type: string
+
+    Fundamental:
+      type: object
+      properties:
+        symbol:
+          type: string
+        companyName:
+          type: string
+        sector:
+          type: string
+        industry:
+          type: string
+        marketCap:
+          type: number
+        peRatio:
+          type: number
+          nullable: true
+        eps:
+          type: number
+        dividendYield:
+          type: number
+          nullable: true
+        beta:
+          type: number
+        fiftyTwoWeekHigh:
+          type: number
+        fiftyTwoWeekLow:
+          type: number
+        description:
+          type: string
+
+    IncomeStatement:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        period:
+          type: string
+          enum: [annual, quarterly]
+        revenue:
+          type: number
+        costOfRevenue:
+          type: number
+        grossProfit:
+          type: number
+        operatingIncome:
+          type: number
+        netIncome:
+          type: number
+        eps:
+          type: number
+        epsDialuted:
+          type: number
+
+    BalanceSheet:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        period:
+          type: string
+          enum: [annual, quarterly]
+        totalAssets:
+          type: number
+        totalLiabilities:
+          type: number
+        totalEquity:
+          type: number
+        cash:
+          type: number
+        totalDebt:
+          type: number
+        netDebt:
+          type: number
+
+    Technical:
+      type: object
+      properties:
+        symbol:
+          type: string
+        interval:
+          type: string
+        indicators:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              $ref: "#/components/schemas/IndicatorValue"
+        candles:
+          type: array
+          items:
+            $ref: "#/components/schemas/Candle"
+
+    IndicatorValue:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        value:
+          type: number
+
+    Candle:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        open:
+          type: number
+        high:
+          type: number
+        low:
+          type: number
+        close:
+          type: number
+        volume:
+          type: integer
+
+    NewsArticle:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        source:
+          type: string
+        url:
+          type: string
+          format: uri
+        publishedAt:
+          type: string
+          format: date-time
+        symbols:
+          type: array
+          items:
+            type: string
+        sentiment:
+          type: string
+          enum: [positive, negative, neutral]
+
+    ScreenerFilters:
+      type: object
+      properties:
+        marketCapMin:
+          type: number
+        marketCapMax:
+          type: number
+        peRatioMin:
+          type: number
+        peRatioMax:
+          type: number
+        sector:
+          type: string
+        industry:
+          type: string
+        dividendYieldMin:
+          type: number
+        volumeMin:
+          type: integer
+        exchange:
+          type: string
+          enum: [NYSE, NASDAQ, AMEX]
+
+    ScreenerResult:
+      type: object
+      properties:
+        symbol:
+          type: string
+        companyName:
+          type: string
+        price:
+          type: number
+        changePct:
+          type: number
+        marketCap:
+          type: number
+        peRatio:
+          type: number
+          nullable: true
+        volume:
+          type: integer
+
+    PageInfo:
+      type: object
+      properties:
+        hasNext:
+          type: boolean
+        cursor:
+          type: string
+          nullable: true
+        totalCount:
+          type: integer
+
+    Webhook:
+      type: object
+      properties:
+        id:
+          type: string
+        url:
+          type: string
+          format: uri
+        events:
+          type: array
+          items:
+            type: string
+        symbols:
+          type: array
+          items:
+            type: string
+        secret:
+          type: string
+          description: Signing secret (only returned on creation)
+        createdAt:
+          type: string
+          format: date-time
+        active:
+          type: boolean
+
+    OptionsChain:
+      type: object
+      properties:
+        symbol:
+          type: string
+        expirations:
+          type: array
+          items:
+            type: string
+            format: date
+        chain:
+          type: array
+          items:
+            $ref: "#/components/schemas/OptionContract"
+
+    OptionContract:
+      type: object
+      properties:
+        contractSymbol:
+          type: string
+        type:
+          type: string
+          enum: [call, put]
+        strike:
+          type: number
+        expiration:
+          type: string
+          format: date
+        bid:
+          type: number
+        ask:
+          type: number
+        lastPrice:
+          type: number
+        volume:
+          type: integer
+        openInterest:
+          type: integer
+        impliedVolatility:
+          type: number
+        delta:
+          type: number
+          nullable: true
+        gamma:
+          type: number
+          nullable: true
+        theta:
+          type: number
+          nullable: true
+
+    AnalystConsensus:
+      type: object
+      required: [symbol, consensus, totalAnalysts]
+      properties:
+        symbol:
+          type: string
+        consensus:
+          type: string
+          enum: [Strong Buy, Buy, Hold, Sell, Strong Sell]
+        targetHigh:
+          type: number
+        targetLow:
+          type: number
+        targetMean:
+          type: number
+        targetMedian:
+          type: number
+        totalAnalysts:
+          type: integer
+        buy:
+          type: integer
+        hold:
+          type: integer
+        sell:
+          type: integer
+
+    PriceTarget:
+      type: object
+      properties:
+        analystName:
+          type: string
+        firm:
+          type: string
+        target:
+          type: number
+        rating:
+          type: string
+        publishedAt:
+          type: string
+          format: date-time
+
+    AnalystRating:
+      type: object
+      properties:
+        analystName:
+          type: string
+        firm:
+          type: string
+        action:
+          type: string
+          enum: [initiated, upgraded, downgraded, reiterated]
+        fromRating:
+          type: string
+          nullable: true
+        toRating:
+          type: string
+        target:
+          type: number
+          nullable: true
+        publishedAt:
+          type: string
+          format: date-time
+
+    EarningsResult:
+      type: object
+      required: [symbol, date, fiscalQuarter]
+      properties:
+        symbol:
+          type: string
+        date:
+          type: string
+          format: date
+        fiscalQuarter:
+          type: string
+        epsActual:
+          type: number
+        epsEstimate:
+          type: number
+        epsSurprise:
+          type: number
+        epsSurprisePct:
+          type: number
+        revenueActual:
+          type: number
+        revenueEstimate:
+          type: number
+        revenueSurprisePct:
+          type: number
+
+    EarningsCalendarEntry:
+      type: object
+      required: [symbol, companyName, date, fiscalQuarter]
+      properties:
+        symbol:
+          type: string
+        companyName:
+          type: string
+        date:
+          type: string
+          format: date
+        time:
+          type: string
+          enum: [before_market, after_market, during_market]
+        epsEstimate:
+          type: number
+          nullable: true
+        revenueEstimate:
+          type: number
+          nullable: true
+        fiscalQuarter:
+          type: string
+
+    InsiderTransaction:
+      type: object
+      properties:
+        symbol:
+          type: string
+        insiderName:
+          type: string
+        title:
+          type: string
+        transactionType:
+          type: string
+          enum: [buy, sell, exercise]
+        shares:
+          type: integer
+        price:
+          type: number
+        totalValue:
+          type: number
+        sharesOwnedAfter:
+          type: integer
+        filedAt:
+          type: string
+          format: date-time
+
+    InsiderSummary:
+      type: object
+      required: [symbol]
+      properties:
+        symbol:
+          type: string
+        netShares30d:
+          type: integer
+        netValue30d:
+          type: number
+        netShares90d:
+          type: integer
+        netValue90d:
+          type: number
+        buyCount90d:
+          type: integer
+        sellCount90d:
+          type: integer
+        mostRecentTransaction:
+          $ref: "#/components/schemas/InsiderTransaction"
+
+  responses:
+    Unauthorized:
+      description: Authentication failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    RateLimited:
+      description: Rate limit exceeded
+      headers:
+        Retry-After:
+          schema:
+            type: number
+        X-VQ-RateLimit-Limit:
+          schema:
+            type: integer
+        X-VQ-RateLimit-Remaining:
+          schema:
+            type: integer
+        X-VQ-RateLimit-Reset:
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    ValidationError:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"

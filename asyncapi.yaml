@@ -1,0 +1,276 @@
+asyncapi: 3.0.0
+info:
+  title: VecTrade Event API
+  version: 1.0.0
+  description: |
+    Real-time event streams from VecTrade via WebSocket and Server-Sent Events.
+    Use these channels to receive live market data updates, price alerts,
+    and AI analysis results.
+  contact:
+    name: VecTrade API Support
+    email: api@vectrade.io
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+servers:
+  production:
+    host: ws.vectrade.io
+    protocol: wss
+    description: Production & Sandbox WebSocket endpoint (mode determined by API key prefix)
+    security:
+      - $ref: '#/components/securitySchemes/bearerToken'
+
+defaultContentType: application/json
+
+channels:
+  quotes:
+    address: /ws/v1/quotes
+    description: Real-time quote updates for subscribed symbols
+    messages:
+      quoteUpdate:
+        $ref: '#/components/messages/QuoteUpdate'
+      subscribe:
+        $ref: '#/components/messages/SubscribeRequest'
+      unsubscribe:
+        $ref: '#/components/messages/UnsubscribeRequest'
+
+  priceAlerts:
+    address: /ws/v1/alerts
+    description: Price alert notifications
+    messages:
+      alertTriggered:
+        $ref: '#/components/messages/AlertTriggered'
+
+  aiStream:
+    address: /ws/v1/ai/stream
+    description: Streaming AI analysis responses
+    messages:
+      aiChunk:
+        $ref: '#/components/messages/AIChunk'
+      aiDone:
+        $ref: '#/components/messages/AIDone'
+
+  news:
+    address: /ws/v1/news
+    description: Real-time news article notifications
+    messages:
+      newsPublished:
+        $ref: '#/components/messages/NewsPublished'
+
+operations:
+  subscribeQuotes:
+    action: send
+    channel:
+      $ref: '#/channels/quotes'
+    summary: Subscribe to real-time quotes for given symbols
+    messages:
+      - $ref: '#/channels/quotes/messages/subscribe'
+
+  receiveQuoteUpdates:
+    action: receive
+    channel:
+      $ref: '#/channels/quotes'
+    summary: Receive real-time quote updates
+    messages:
+      - $ref: '#/channels/quotes/messages/quoteUpdate'
+
+  receiveAlerts:
+    action: receive
+    channel:
+      $ref: '#/channels/priceAlerts'
+    summary: Receive price alert notifications
+    messages:
+      - $ref: '#/channels/priceAlerts/messages/alertTriggered'
+
+  receiveAIStream:
+    action: receive
+    channel:
+      $ref: '#/channels/aiStream'
+    summary: Receive streaming AI analysis chunks
+    messages:
+      - $ref: '#/channels/aiStream/messages/aiChunk'
+      - $ref: '#/channels/aiStream/messages/aiDone'
+
+  receiveNews:
+    action: receive
+    channel:
+      $ref: '#/channels/news'
+    summary: Receive news article notifications
+    messages:
+      - $ref: '#/channels/news/messages/newsPublished'
+
+components:
+  securitySchemes:
+    bearerToken:
+      type: http
+      scheme: bearer
+      bearerFormat: "vq_live_..."
+
+  messages:
+    SubscribeRequest:
+      name: subscribe
+      payload:
+        type: object
+        required: [action, symbols]
+        properties:
+          action:
+            type: string
+            const: subscribe
+          symbols:
+            type: array
+            items:
+              type: string
+            description: Symbols to subscribe to
+            examples:
+              - ["AAPL", "GOOGL", "MSFT"]
+          fields:
+            type: array
+            items:
+              type: string
+            description: Fields to include in updates
+
+    UnsubscribeRequest:
+      name: unsubscribe
+      payload:
+        type: object
+        required: [action, symbols]
+        properties:
+          action:
+            type: string
+            const: unsubscribe
+          symbols:
+            type: array
+            items:
+              type: string
+
+    QuoteUpdate:
+      name: quoteUpdate
+      payload:
+        type: object
+        required: [type, symbol, price, timestamp]
+        properties:
+          type:
+            type: string
+            const: quote.update
+          symbol:
+            type: string
+          price:
+            type: number
+          change:
+            type: number
+          changePct:
+            type: number
+          volume:
+            type: integer
+          bid:
+            type: number
+          ask:
+            type: number
+          timestamp:
+            type: string
+            format: date-time
+
+    AlertTriggered:
+      name: alertTriggered
+      payload:
+        type: object
+        required: [type, id, symbol, price, condition]
+        properties:
+          type:
+            type: string
+            const: alert.triggered
+          id:
+            type: string
+            description: Alert subscription ID
+          symbol:
+            type: string
+          price:
+            type: number
+          condition:
+            type: object
+            properties:
+              operator:
+                type: string
+                enum: [crosses_above, crosses_below, pct_change_above, pct_change_below]
+              threshold:
+                type: number
+          triggeredAt:
+            type: string
+            format: date-time
+
+    AIChunk:
+      name: aiChunk
+      payload:
+        type: object
+        required: [type, content]
+        properties:
+          type:
+            type: string
+            const: ai.chunk
+          content:
+            type: string
+          metadata:
+            type: object
+            properties:
+              model:
+                type: string
+              citations:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    source:
+                      type: string
+                    url:
+                      type: string
+
+    AIDone:
+      name: aiDone
+      payload:
+        type: object
+        required: [type]
+        properties:
+          type:
+            type: string
+            const: ai.done
+          usage:
+            type: object
+            properties:
+              promptTokens:
+                type: integer
+              completionTokens:
+                type: integer
+              totalTokens:
+                type: integer
+
+    NewsPublished:
+      name: newsPublished
+      payload:
+        type: object
+        required: [type, id, title, symbols]
+        properties:
+          type:
+            type: string
+            const: news.published
+          id:
+            type: string
+          title:
+            type: string
+          summary:
+            type: string
+          source:
+            type: string
+          url:
+            type: string
+            format: uri
+          symbols:
+            type: array
+            items:
+              type: string
+          sentiment:
+            type: string
+            enum: [positive, negative, neutral]
+          publishedAt:
+            type: string
+            format: date-time
