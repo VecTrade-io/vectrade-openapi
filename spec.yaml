@@ -36,6 +36,7 @@ paths:
     get:
       operationId: getQuote
       summary: Get real-time quote
+      description: Retrieve the latest real-time quote for a single symbol including price, change, volume, and market data.
       tags: [Quotes]
       parameters:
         - name: symbol
@@ -67,6 +68,7 @@ paths:
     get:
       operationId: getBatchQuotes
       summary: Get quotes for multiple symbols
+      description: Retrieve real-time quotes for up to 50 symbols in a single request.
       tags: [Quotes]
       parameters:
         - name: symbols
@@ -88,11 +90,16 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/Quote"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
 
   /vq/fundamentals/{symbol}:
     get:
       operationId: getFundamentals
       summary: Get company fundamentals
+      description: Retrieve fundamental data for a company including valuation ratios, market cap, dividends, and sector information.
       tags: [Fundamentals]
       parameters:
         - name: symbol
@@ -119,6 +126,7 @@ paths:
     get:
       operationId: getIncomeStatement
       summary: Get income statement
+      description: Retrieve historical income statement data for a company, including revenue, costs, and earnings.
       tags: [Fundamentals]
       parameters:
         - name: symbol
@@ -160,6 +168,7 @@ paths:
     get:
       operationId: getBalanceSheet
       summary: Get balance sheet
+      description: Retrieve historical balance sheet data for a company, including assets, liabilities, and equity.
       tags: [Fundamentals]
       parameters:
         - name: symbol
@@ -201,6 +210,7 @@ paths:
     get:
       operationId: getTechnicals
       summary: Get technical indicators
+      description: Retrieve technical analysis indicators (SMA, EMA, RSI, MACD, Bollinger Bands) and OHLCV candle data for a symbol.
       tags: [Technicals]
       parameters:
         - name: symbol
@@ -244,6 +254,7 @@ paths:
     get:
       operationId: listNews
       summary: List financial news
+      description: Retrieve a paginated list of financial news articles, optionally filtered by symbols.
       tags: [News]
       parameters:
         - name: symbols
@@ -285,6 +296,7 @@ paths:
     get:
       operationId: getNewsArticle
       summary: Get a single news article
+      description: Retrieve a single news article by its unique identifier.
       tags: [News]
       parameters:
         - name: id
@@ -310,6 +322,7 @@ paths:
     post:
       operationId: runScreener
       summary: Run stock screener
+      description: Run a stock screener query with custom filters for market cap, P/E ratio, sector, and more. Results are paginated.
       tags: [Screener]
       requestBody:
         required: true
@@ -353,6 +366,7 @@ paths:
     post:
       operationId: analyzeAI
       summary: AI-powered financial analysis
+      description: Submit a natural-language prompt for AI-powered financial analysis. Supports streaming via Server-Sent Events.
       tags: [AI]
       requestBody:
         required: true
@@ -395,6 +409,7 @@ paths:
     get:
       operationId: listWebhooks
       summary: List webhook subscriptions
+      description: Retrieve all active webhook subscriptions for the authenticated account.
       tags: [Webhooks]
       responses:
         "200":
@@ -410,9 +425,12 @@ paths:
                       $ref: "#/components/schemas/Webhook"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
     post:
       operationId: createWebhook
       summary: Create webhook subscription
+      description: Create a new webhook subscription to receive event notifications at the specified HTTPS endpoint.
       tags: [Webhooks]
       requestBody:
         required: true
@@ -447,11 +465,14 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "422":
           $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/RateLimited"
 
   /vq/webhooks/{id}:
     delete:
       operationId: deleteWebhook
       summary: Delete webhook subscription
+      description: Delete an existing webhook subscription by its unique identifier.
       tags: [Webhooks]
       parameters:
         - name: id
@@ -466,11 +487,14 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
 
   /vq/options/{symbol}:
     get:
       operationId: getOptionsChain
       summary: Get options chain
+      description: Retrieve the full options chain for a symbol, optionally filtered by expiration date and option type.
       tags: [Options]
       parameters:
         - name: symbol
@@ -507,6 +531,7 @@ paths:
     get:
       operationId: getOptionsExpirations
       summary: Get available expiration dates
+      description: Retrieve the list of available option expiration dates for a symbol.
       tags: [Options]
       parameters:
         - name: symbol
@@ -531,11 +556,14 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
 
   /vq/analyst/{symbol}/consensus:
     get:
       operationId: getAnalystConsensus
       summary: Get analyst consensus rating
+      description: Retrieve the aggregated analyst consensus rating and price target statistics for a symbol.
       tags: [Analyst]
       parameters:
         - name: symbol
@@ -561,6 +589,7 @@ paths:
     get:
       operationId: getAnalystPriceTargets
       summary: Get analyst price targets
+      description: Retrieve individual analyst price targets for a symbol.
       tags: [Analyst]
       parameters:
         - name: symbol
@@ -582,6 +611,8 @@ paths:
                       $ref: "#/components/schemas/PriceTarget"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
 
@@ -589,6 +620,7 @@ paths:
     get:
       operationId: getAnalystRatings
       summary: Get recent analyst rating changes
+      description: Retrieve recent analyst rating changes (upgrades, downgrades, initiations) for a symbol.
       tags: [Analyst]
       parameters:
         - name: symbol
@@ -615,6 +647,8 @@ paths:
                       $ref: "#/components/schemas/AnalystRating"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
 
@@ -622,6 +656,7 @@ paths:
     get:
       operationId: getEarningsHistory
       summary: Get historical earnings results
+      description: Retrieve historical earnings results for a symbol, including EPS and revenue actual vs. estimate.
       tags: [Earnings]
       parameters:
         - name: symbol
@@ -648,6 +683,8 @@ paths:
                       $ref: "#/components/schemas/EarningsResult"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
 
@@ -655,6 +692,7 @@ paths:
     get:
       operationId: getEarningsCalendar
       summary: Get upcoming earnings calendar
+      description: Retrieve upcoming earnings calendar entries across all tracked companies, filterable by date range.
       tags: [Earnings]
       parameters:
         - name: from
@@ -688,6 +726,7 @@ paths:
     get:
       operationId: getInsiderTransactions
       summary: Get insider transactions
+      description: Retrieve a list of recent insider transactions (buys, sells, exercises) for a symbol.
       tags: [Insider]
       parameters:
         - name: symbol
@@ -714,6 +753,8 @@ paths:
                       $ref: "#/components/schemas/InsiderTransaction"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
 
@@ -721,6 +762,7 @@ paths:
     get:
       operationId: getInsiderSummary
       summary: Get insider trading summary
+      description: Retrieve an aggregated summary of insider trading activity for a symbol over 30-day and 90-day periods.
       tags: [Insider]
       parameters:
         - name: symbol
@@ -737,6 +779,8 @@ paths:
                 $ref: "#/components/schemas/InsiderSummary"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
 
@@ -867,7 +911,7 @@ components:
           type: number
         eps:
           type: number
-        epsDialuted:
+        epsDiluted:
           type: number
 
     BalanceSheet:
