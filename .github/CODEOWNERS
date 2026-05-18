@@ -1,0 +1,5 @@
+# Default owners for the entire repository
+* @VecTrade-io/sdk-team
+
+# CI/CD configuration
+.github/ @VecTrade-io/platform-team
