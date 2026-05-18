@@ -50,7 +50,7 @@ SDKs are generated from this spec. Do not edit SDK code directly — update this
 
 ## Documentation
 
-Rendered API docs: [docs.vectrade.io/api-reference](https://docs.vectrade.io/api-reference).
+Rendered API docs: [docs.vectrade.io/api-reference](https://docs.vectrade.io/api-reference/overview).
 
 ## Contributing
 
