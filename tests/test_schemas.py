@@ -14,6 +14,8 @@ SCHEMAS_WITH_REQUIRED = {
     "EarningsResult": ["symbol", "date", "fiscalQuarter"],
     "EarningsCalendarEntry": ["symbol", "companyName", "date", "fiscalQuarter"],
     "InsiderSummary": ["symbol"],
+    "ApiKey": ["id", "keyPrefix", "label", "scopes", "createdAt"],
+    "ApiKeyCreated": ["id", "keyPrefix", "label", "scopes", "rawKey", "createdAt"],
 }
 
 # All schema names that should exist
@@ -24,6 +26,8 @@ EXPECTED_SCHEMAS = {
     "OptionsChain", "OptionContract", "AnalystConsensus", "PriceTarget",
     "AnalystRating", "EarningsResult", "EarningsCalendarEntry",
     "InsiderTransaction", "InsiderSummary",
+    "ApiKey", "ApiKeyCreated", "UsageResponse", "DailyUsage",
+    "PlanResponse", "QuotaResponse",
 }
 
 
@@ -36,7 +40,7 @@ class TestSchemaPresence:
         assert not missing, f"Missing schemas: {missing}"
 
     def test_schema_count(self, spec: dict):
-        assert len(spec["components"]["schemas"]) >= 23
+        assert len(spec["components"]["schemas"]) >= 29
 
 
 class TestSchemaStructure:

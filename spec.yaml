@@ -122,7 +122,7 @@ paths:
         "429":
           $ref: "#/components/responses/RateLimited"
 
-  /vq/fundamentals/{symbol}/income-statement:
+  /vq/fundamentals/{symbol}/income:
     get:
       operationId: getIncomeStatement
       summary: Get income statement
@@ -319,28 +319,90 @@ paths:
           $ref: "#/components/responses/RateLimited"
 
   /vq/screener:
-    post:
+    get:
       operationId: runScreener
       summary: Run stock screener
       description: Run a stock screener query with custom filters for market cap, P/E ratio, sector, and more. Results are paginated.
       tags: [Screener]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ScreenerFilters"
       parameters:
+        - name: market_cap_min
+          in: query
+          schema:
+            type: number
+          description: Minimum market capitalization
+        - name: market_cap_max
+          in: query
+          schema:
+            type: number
+          description: Maximum market capitalization
+        - name: pe_min
+          in: query
+          schema:
+            type: number
+          description: Minimum P/E ratio
+        - name: pe_max
+          in: query
+          schema:
+            type: number
+          description: Maximum P/E ratio
+        - name: dividend_yield_min
+          in: query
+          schema:
+            type: number
+          description: Minimum dividend yield
+        - name: sector
+          in: query
+          schema:
+            type: string
+          description: Filter by sector
+        - name: industry
+          in: query
+          schema:
+            type: string
+          description: Filter by industry
+        - name: country
+          in: query
+          schema:
+            type: string
+            default: US
+          description: Country code filter
+        - name: sort_by
+          in: query
+          schema:
+            type: string
+            default: market_cap
+            enum: [market_cap, pe_ratio, dividend_yield, volume, change_pct]
+          description: Sort field
+        - name: sort_order
+          in: query
+          schema:
+            type: string
+            default: desc
+            enum: [asc, desc]
+          description: Sort direction
+        - name: volume_min
+          in: query
+          schema:
+            type: integer
+          description: Minimum trading volume
+        - name: exchange
+          in: query
+          schema:
+            type: string
+            enum: [NYSE, NASDAQ, AMEX]
+          description: Exchange filter
         - name: cursor
           in: query
           schema:
             type: string
+          description: Pagination cursor
         - name: limit
           in: query
           schema:
             type: integer
             default: 50
             maximum: 200
+          description: Results per page
       responses:
         "200":
           description: Screener results (paginated)
@@ -784,6 +846,170 @@ paths:
         "429":
           $ref: "#/components/responses/RateLimited"
 
+  /vq/developer/keys:
+    get:
+      operationId: listApiKeys
+      summary: List API keys
+      description: List all API keys for the authenticated user. Raw key values are never returned.
+      tags: [Developer]
+      responses:
+        "200":
+          description: List of API keys
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ApiKey"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+    post:
+      operationId: createApiKey
+      summary: Create API key
+      description: Create a new API key. The raw key is returned only once in the response — store it securely.
+      tags: [Developer]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [label]
+              properties:
+                label:
+                  type: string
+                  description: Human-readable label for the key
+                scopes:
+                  type: array
+                  items:
+                    type: string
+                  description: Permission scopes for the key
+      responses:
+        "201":
+          description: API key created (includes raw key)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiKeyCreated"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /vq/developer/keys/{keyId}:
+    delete:
+      operationId: revokeApiKey
+      summary: Revoke API key
+      description: Permanently revoke an API key. This action cannot be undone.
+      tags: [Developer]
+      parameters:
+        - name: keyId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Key revoked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /vq/developer/usage:
+    get:
+      operationId: getUsage
+      summary: Get API usage
+      description: Get aggregated API usage statistics for the current billing period.
+      tags: [Developer]
+      responses:
+        "200":
+          description: Usage statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /vq/developer/usage/daily:
+    get:
+      operationId: getDailyUsage
+      summary: Get daily usage breakdown
+      description: Get per-day, per-endpoint usage breakdown for the current billing period.
+      tags: [Developer]
+      parameters:
+        - name: days
+          in: query
+          schema:
+            type: integer
+            default: 30
+            maximum: 90
+          description: Number of days to look back
+      responses:
+        "200":
+          description: Daily usage records
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DailyUsage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /vq/developer/plan:
+    get:
+      operationId: getPlan
+      summary: Get subscription plan
+      description: Get the authenticated user's active subscription details.
+      tags: [Developer]
+      responses:
+        "200":
+          description: Subscription plan details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /vq/developer/quota:
+    get:
+      operationId: getQuota
+      summary: Get API quota
+      description: Check remaining API and token quota for the current billing period.
+      tags: [Developer]
+      responses:
+        "200":
+          description: Quota information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuotaResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
 components:
   securitySchemes:
     BearerAuth:
@@ -876,6 +1102,9 @@ components:
         peRatio:
           type: number
           nullable: true
+        forwardPe:
+          type: number
+          nullable: true
         eps:
           type: number
         dividendYield:
@@ -887,6 +1116,10 @@ components:
           type: number
         fiftyTwoWeekLow:
           type: number
+        avgVolume:
+          type: integer
+        sharesOutstanding:
+          type: integer
         description:
           type: string
 
@@ -1012,9 +1245,9 @@ components:
           type: number
         marketCapMax:
           type: number
-        peRatioMin:
+        peMin:
           type: number
-        peRatioMax:
+        peMax:
           type: number
         sector:
           type: string
@@ -1027,6 +1260,17 @@ components:
         exchange:
           type: string
           enum: [NYSE, NASDAQ, AMEX]
+        country:
+          type: string
+          default: US
+        sortBy:
+          type: string
+          default: market_cap
+          enum: [market_cap, pe_ratio, dividend_yield, volume, change_pct]
+        sortOrder:
+          type: string
+          default: desc
+          enum: [asc, desc]
 
     ScreenerResult:
       type: object
@@ -1044,8 +1288,18 @@ components:
         peRatio:
           type: number
           nullable: true
+        dividendYield:
+          type: number
+          nullable: true
+        sector:
+          type: string
+        industry:
+          type: string
         volume:
           type: integer
+        rsi14:
+          type: number
+          nullable: true
 
     PageInfo:
       type: object
@@ -1289,6 +1543,119 @@ components:
           type: integer
         mostRecentTransaction:
           $ref: "#/components/schemas/InsiderTransaction"
+
+    ApiKey:
+      type: object
+      required: [id, keyPrefix, label, scopes, createdAt]
+      properties:
+        id:
+          type: string
+        keyPrefix:
+          type: string
+          description: First 8 characters of the key for identification
+        label:
+          type: string
+        scopes:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    ApiKeyCreated:
+      type: object
+      required: [id, keyPrefix, label, scopes, rawKey, createdAt]
+      properties:
+        id:
+          type: string
+        keyPrefix:
+          type: string
+        label:
+          type: string
+        scopes:
+          type: array
+          items:
+            type: string
+        rawKey:
+          type: string
+          description: Full API key — returned only once on creation
+        createdAt:
+          type: string
+          format: date-time
+
+    UsageResponse:
+      type: object
+      properties:
+        period:
+          type: string
+        totalRequests:
+          type: integer
+        aiRequests:
+          type: integer
+        errorCount:
+          type: integer
+        tokensUsed:
+          type: integer
+        quotaLimit:
+          type: integer
+        quotaRemaining:
+          type: integer
+
+    DailyUsage:
+      type: object
+      properties:
+        day:
+          type: string
+          format: date
+        endpoint:
+          type: string
+        method:
+          type: string
+        callCount:
+          type: integer
+        errorCount:
+          type: integer
+        tokensUsed:
+          type: integer
+
+    PlanResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        planId:
+          type: string
+        planName:
+          type: string
+        status:
+          type: string
+        currentPeriodStart:
+          type: string
+          format: date-time
+        currentPeriodEnd:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    QuotaResponse:
+      type: object
+      properties:
+        planId:
+          type: string
+        monthlyQuota:
+          type: integer
+        used:
+          type: integer
+        remaining:
+          type: integer
+        overagePolicy:
+          type: string
+        resetAt:
+          type: string
+          format: date-time
 
   responses:
     Unauthorized:

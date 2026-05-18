@@ -28,11 +28,18 @@ EXPECTED_OPERATION_IDS = {
     "getEarningsCalendar",
     "getInsiderTransactions",
     "getInsiderSummary",
+    "listApiKeys",
+    "createApiKey",
+    "revokeApiKey",
+    "getUsage",
+    "getDailyUsage",
+    "getPlan",
+    "getQuota",
 }
 
 # Tags that must exist
 EXPECTED_TAGS = {"Quotes", "Fundamentals", "Technicals", "News", "Screener", "AI", "Webhooks",
-                 "Options", "Analyst", "Earnings", "Insider"}
+                 "Options", "Analyst", "Earnings", "Insider", "Developer"}
 
 
 class TestOperationCompleteness:
@@ -81,7 +88,7 @@ class TestOperationIds:
             assert "-" not in oid, f"{oid} should not contain hyphens"
 
     def test_operation_count(self, operations):
-        assert len(operations) == 22
+        assert len(operations) == 29
 
 
 class TestErrorResponses:

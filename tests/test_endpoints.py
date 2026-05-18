@@ -43,13 +43,13 @@ class TestFundamentalsEndpoints:
         assert ref.endswith("/Fundamental")
 
     def test_income_statement_has_period_param(self, spec: dict):
-        op = spec["paths"]["/vq/fundamentals/{symbol}/income-statement"]["get"]
+        op = spec["paths"]["/vq/fundamentals/{symbol}/income"]["get"]
         params = {p["name"]: p for p in op["parameters"]}
         assert "period" in params
         assert set(params["period"]["schema"]["enum"]) == {"annual", "quarterly"}
 
     def test_income_statement_has_limit_param(self, spec: dict):
-        op = spec["paths"]["/vq/fundamentals/{symbol}/income-statement"]["get"]
+        op = spec["paths"]["/vq/fundamentals/{symbol}/income"]["get"]
         params = {p["name"]: p for p in op["parameters"]}
         assert "limit" in params
         assert params["limit"]["schema"]["default"] == 4
@@ -100,28 +100,39 @@ class TestNewsEndpoints:
 class TestScreenerEndpoint:
     """Tests for /vq/screener."""
 
-    def test_screener_is_post(self, spec: dict):
-        assert "post" in spec["paths"]["/vq/screener"]
+    def test_screener_is_get(self, spec: dict):
+        assert "get" in spec["paths"]["/vq/screener"]
 
-    def test_screener_uses_screener_filters_schema(self, spec: dict):
-        op = spec["paths"]["/vq/screener"]["post"]
-        rb_ref = op["requestBody"]["content"]["application/json"]["schema"]["$ref"]
-        assert rb_ref.endswith("/ScreenerFilters")
+    def test_screener_has_filter_params(self, spec: dict):
+        op = spec["paths"]["/vq/screener"]["get"]
+        params = {p["name"]: p for p in op.get("parameters", [])}
+        assert "market_cap_min" in params
+        assert "pe_min" in params
+        assert "sector" in params
+        assert "country" in params
+        assert "sort_by" in params
+        assert "sort_order" in params
 
     def test_screener_has_pagination(self, spec: dict):
-        op = spec["paths"]["/vq/screener"]["post"]
+        op = spec["paths"]["/vq/screener"]["get"]
         params = {p["name"]: p for p in op.get("parameters", [])}
         assert "cursor" in params
         assert "limit" in params
 
     def test_screener_limit_max(self, spec: dict):
-        op = spec["paths"]["/vq/screener"]["post"]
+        op = spec["paths"]["/vq/screener"]["get"]
         params = {p["name"]: p for p in op.get("parameters", [])}
         assert params["limit"]["schema"]["maximum"] == 200
 
     def test_screener_has_422(self, spec: dict):
-        op = spec["paths"]["/vq/screener"]["post"]
+        op = spec["paths"]["/vq/screener"]["get"]
         assert "422" in op["responses"]
+
+    def test_screener_sort_options(self, spec: dict):
+        op = spec["paths"]["/vq/screener"]["get"]
+        params = {p["name"]: p for p in op.get("parameters", [])}
+        assert "enum" in params["sort_by"]["schema"]
+        assert set(params["sort_order"]["schema"]["enum"]) == {"asc", "desc"}
 
 
 class TestAIEndpoint:
