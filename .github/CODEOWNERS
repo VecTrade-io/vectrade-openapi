@@ -1,5 +1,12 @@
-# Default owners for the entire repository
-* @VecTrade-io/sdk-team
+# ─── CODEOWNERS ─────────────────────────────────────────────────────────────
+# Maps file patterns to owners/agents responsible for review.
 
-# CI/CD configuration
-.github/ @VecTrade-io/platform-team
+# ── Default ─────────────────────────────────────────────────────────────────
+*                           @mountek
+
+# ── CI / DevOps ─────────────────────────────────────────────────────────────
+.github/workflows/          @mountek
+
+# ── API Spec (vt-api-designer) ──────────────────────────────────────────────
+spec.yaml                   @mountek
+schemas/                    @mountek
