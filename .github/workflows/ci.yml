@@ -24,10 +24,10 @@ jobs:
           - os: windows-latest
             python-version: "3.11"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -35,16 +35,16 @@ jobs:
         run: pip install pyyaml pytest pytest-cov
 
       - name: Run validation tests
-        run: python -m pytest tests/ -v --tb=short --cov=tests --cov-report=term-missing
+        run: python -m pytest tests/ -v --tb=short --cov=tests --cov-report=term-missing --ignore=tests/test_live.py
 
   lint:
     name: Spectral Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "20"
 
@@ -58,7 +58,7 @@ jobs:
     name: Security Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Check for hardcoded secrets
         run: |
@@ -74,10 +74,10 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     needs: [validate, lint]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 

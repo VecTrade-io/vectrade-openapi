@@ -1,21 +1,12 @@
 extends: [[spectral:oas, recommended]]
 
 rules:
-  operation-operationId:
-    severity: error
-  operation-tags:
-    severity: error
-  oas3-api-servers:
-    severity: error
-  info-contact:
-    severity: warn
-  info-license:
-    severity: warn
-  no-eval-in-markdown:
-    severity: error
-  no-script-tags-in-markdown:
-    severity: error
-  operation-description:
-    severity: warn
-  operation-success-response:
-    severity: error
+  operation-operationId: error
+  operation-tags: error
+  oas3-api-servers: error
+  info-contact: warn
+  info-license: warn
+  no-eval-in-markdown: error
+  no-script-tags-in-markdown: error
+  operation-description: warn
+  operation-success-response: error
