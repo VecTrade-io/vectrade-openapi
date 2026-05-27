@@ -6,9 +6,9 @@ info:
     Financial data, AI-powered analysis, and trading intelligence.
 
     ## Authentication
-    All requests require a Bearer token in the Authorization header:
+    All requests require an API key in the `X-API-Key` header:
     ```
-    Authorization: Bearer vq_live_...
+    X-API-Key: vq_your_key_here
     ```
 
     ## Rate Limits
@@ -29,7 +29,7 @@ servers:
     description: Production & Sandbox (mode determined by API key prefix)
 
 security:
-  - BearerAuth: []
+  - ApiKeyAuth: []
 
 paths:
   /vq/quotes/{symbol}:
@@ -122,7 +122,7 @@ paths:
         "429":
           $ref: "#/components/responses/RateLimited"
 
-  /vq/fundamentals/{symbol}/income:
+  /vq/fundamentals/{symbol}/statements:
     get:
       operationId: getIncomeStatement
       summary: Get income statement
@@ -164,7 +164,7 @@ paths:
         "429":
           $ref: "#/components/responses/RateLimited"
 
-  /vq/fundamentals/{symbol}/balance-sheet:
+  /vq/fundamentals/{symbol}/balance-sheet:  # DEPRECATED - use /statements
     get:
       operationId: getBalanceSheet
       summary: Get balance sheet
@@ -206,7 +206,7 @@ paths:
         "429":
           $ref: "#/components/responses/RateLimited"
 
-  /vq/technicals/{symbol}:
+  /vq/technical/{symbol}:
     get:
       operationId: getTechnicals
       summary: Get technical indicators
@@ -250,7 +250,7 @@ paths:
         "429":
           $ref: "#/components/responses/RateLimited"
 
-  /vq/news:
+  /vq/news/{symbol}:
     get:
       operationId: listNews
       summary: List financial news
@@ -552,7 +552,7 @@ paths:
         "429":
           $ref: "#/components/responses/RateLimited"
 
-  /vq/options/{symbol}:
+  /vq/options/{symbol}/chain:
     get:
       operationId: getOptionsChain
       summary: Get options chain
@@ -621,7 +621,7 @@ paths:
         "429":
           $ref: "#/components/responses/RateLimited"
 
-  /vq/analyst/{symbol}/consensus:
+  /vq/analyst-consensus/{symbol}:
     get:
       operationId: getAnalystConsensus
       summary: Get analyst consensus rating
@@ -647,7 +647,7 @@ paths:
         "429":
           $ref: "#/components/responses/RateLimited"
 
-  /vq/analyst/{symbol}/price-targets:
+  /vq/analyst-targets/{symbol}:
     get:
       operationId: getAnalystPriceTargets
       summary: Get analyst price targets
@@ -678,7 +678,7 @@ paths:
         "429":
           $ref: "#/components/responses/RateLimited"
 
-  /vq/analyst/{symbol}/ratings:
+  /vq/upgrades-downgrades/{symbol}:
     get:
       operationId: getAnalystRatings
       summary: Get recent analyst rating changes
@@ -714,7 +714,7 @@ paths:
         "429":
           $ref: "#/components/responses/RateLimited"
 
-  /vq/earnings/{symbol}/history:
+  /vq/earnings/{symbol}:
     get:
       operationId: getEarningsHistory
       summary: Get historical earnings results
@@ -784,7 +784,7 @@ paths:
         "429":
           $ref: "#/components/responses/RateLimited"
 
-  /vq/insider/{symbol}/transactions:
+  /vq/insider/{symbol}:
     get:
       operationId: getInsiderTransactions
       summary: Get insider transactions
@@ -820,7 +820,7 @@ paths:
         "429":
           $ref: "#/components/responses/RateLimited"
 
-  /vq/insider/{symbol}/summary:
+  /vq/insider/{symbol}/summary:  # DEPRECATED - use /insider/{symbol}
     get:
       operationId: getInsiderSummary
       summary: Get insider trading summary
@@ -1010,12 +1010,218 @@ paths:
         "429":
           $ref: "#/components/responses/RateLimited"
 
+  /vq/profile/{symbol}:
+    get:
+      operationId: getCompanyProfile
+      summary: Get company profile
+      description: Get company information including sector, industry, description, and location.
+      tags: [Fundamentals]
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+          example: AAPL
+      responses:
+        "200":
+          description: Company profile data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ticker:
+                    type: string
+                  company:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      sector:
+                        type: string
+                      industry:
+                        type: string
+                      exchange:
+                        type: string
+                      website:
+                        type: string
+                  location:
+                    type: object
+                    properties:
+                      country:
+                        type: string
+                      state:
+                        type: string
+                      city:
+                        type: string
+                  overview:
+                    type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /vq/sentiment/{symbol}:
+    get:
+      operationId: getSentiment
+      summary: Get sentiment analysis
+      description: Get sentiment score, news sentiment breakdown, and social media metrics.
+      tags: [Sentiment]
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+          example: AAPL
+      responses:
+        "200":
+          description: Sentiment data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sentiment_score:
+                    type: number
+                  signal:
+                    type: string
+                  sentiment_trend:
+                    type: string
+                  news_sentiment_breakdown:
+                    type: object
+                    properties:
+                      positive:
+                        type: integer
+                      neutral:
+                        type: integer
+                      negative:
+                        type: integer
+                  social_sentiment:
+                    type: object
+                    properties:
+                      twitter_sentiment:
+                        type: number
+                      reddit_sentiment:
+                        type: number
+                      stocktwits_sentiment:
+                        type: number
+                      mentions_24h:
+                        type: integer
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /vq/quotes/{symbol}/history:
+    get:
+      operationId: getHistoricalPrices
+      summary: Get historical prices
+      description: Get historical OHLCV price data for a symbol.
+      tags: [Quotes]
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+          example: AAPL
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: ["5d", "1mo", "3mo", "6mo", "1y", "5y"]
+            default: "5d"
+      responses:
+        "200":
+          description: Historical price data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ticker:
+                    type: string
+                  market:
+                    type: string
+                  history:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        timestamp:
+                          type: string
+                        open:
+                          type: number
+                        high:
+                          type: number
+                        low:
+                          type: number
+                        close:
+                          type: number
+                        volume:
+                          type: integer
+                        adj_close:
+                          type: number
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /vq/etf/{symbol}:
+    get:
+      operationId: getETF
+      summary: Get ETF data
+      description: Get ETF information, holdings, sector weights, and performance.
+      tags: [ETF]
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+          example: SPY
+      responses:
+        "200":
+          description: ETF data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ticker:
+                    type: string
+                  name:
+                    type: string
+                  category:
+                    type: string
+                  fund_family:
+                    type: string
+                  expense_ratio:
+                    type: number
+                  total_assets:
+                    type: number
+                  nav_price:
+                    type: number
+                  ytd_return:
+                    type: number
+                  trailing_pe:
+                    type: number
+                  top_holdings:
+                    type: array
+                    items:
+                      type: object
+                  sector_weights:
+                    type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: "vq_live_..."
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: "VecTrade API key (e.g., vq_live_...)"
 
   schemas:
     Quote:
