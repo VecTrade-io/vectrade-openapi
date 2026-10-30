@@ -63,16 +63,16 @@ class TestSecurity:
         assert "security" in spec
         assert len(spec["security"]) >= 1
 
-    def test_bearer_auth_scheme(self, spec: dict):
+    def test_api_key_auth_scheme(self, spec: dict):
         schemes = spec["components"]["securitySchemes"]
-        assert "BearerAuth" in schemes
-        bearer = schemes["BearerAuth"]
-        assert bearer["type"] == "http"
-        assert bearer["scheme"] == "bearer"
+        assert "ApiKeyAuth" in schemes
+        api_key = schemes["ApiKeyAuth"]
+        assert api_key["type"] == "apiKey"
+        assert api_key["in"] == "header"
+        assert api_key["name"] == "X-API-Key"
 
-    def test_bearer_format_documented(self, spec: dict):
-        bearer = spec["components"]["securitySchemes"]["BearerAuth"]
-        assert "bearerFormat" in bearer
+    def test_global_security_uses_api_key(self, spec: dict):
+        assert {"ApiKeyAuth": []} in spec["security"]
 
 
 class TestPaths:
@@ -92,6 +92,12 @@ class TestPaths:
     def test_no_trailing_slashes(self, spec: dict):
         for path in spec["paths"]:
             assert not path.endswith("/"), f"Path {path} has trailing slash"
+
+    def test_path_templates_are_unique(self, spec: dict):
+        import re
+
+        normalized = [re.sub(r"\{[^}]+\}", "{}", path) for path in spec["paths"]]
+        assert len(normalized) == len(set(normalized)), "Equivalent path templates found"
 
 
 class TestComponents:

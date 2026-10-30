@@ -35,11 +35,29 @@ EXPECTED_OPERATION_IDS = {
     "getDailyUsage",
     "getPlan",
     "getQuota",
+    "getCompanyProfile",
+    "getSentiment",
+    "getHistoricalPrices",
+    "getETF",
 }
 
 # Tags that must exist
-EXPECTED_TAGS = {"Quotes", "Fundamentals", "Technicals", "News", "Screener", "AI", "Webhooks",
-                 "Options", "Analyst", "Earnings", "Insider", "Developer"}
+EXPECTED_TAGS = {
+    "Quotes",
+    "Fundamentals",
+    "Technicals",
+    "News",
+    "Screener",
+    "AI",
+    "Webhooks",
+    "Options",
+    "Analyst",
+    "Earnings",
+    "Insider",
+    "Developer",
+    "Sentiment",
+    "ETF",
+}
 
 
 class TestOperationCompleteness:
@@ -88,7 +106,7 @@ class TestOperationIds:
             assert "-" not in oid, f"{oid} should not contain hyphens"
 
     def test_operation_count(self, operations):
-        assert len(operations) == 29
+        assert len(operations) == 33
 
 
 class TestErrorResponses:
@@ -104,7 +122,7 @@ class TestErrorResponses:
 
     def test_symbol_paths_have_404(self, operations):
         for method, path, op in operations:
-            if "{symbol}" in path or "{id}" in path:
+            if ("{symbol}" in path and path != "/vq/news/{symbol}") or "{id}" in path:
                 assert "404" in op["responses"], f"{method.upper()} {path} missing 404"
 
     def test_post_operations_have_success_response(self, operations):

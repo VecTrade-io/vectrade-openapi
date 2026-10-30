@@ -21,17 +21,19 @@ class TestQuotesEndpoints:
         assert "fields" in params
         assert params["fields"]["in"] == "query"
 
-    def test_batch_quotes_has_symbols_param(self, spec: dict):
+    def test_batch_quotes_has_tickers_param(self, spec: dict):
         op = spec["paths"]["/vq/quotes/batch"]["get"]
         params = {p["name"]: p for p in op["parameters"]}
-        assert "symbols" in params
-        assert params["symbols"]["required"] is True
+        assert "tickers" in params
+        assert params["tickers"]["required"] is True
 
-    def test_batch_quotes_returns_array(self, spec: dict):
+    def test_batch_quotes_returns_ticker_map(self, spec: dict):
         op = spec["paths"]["/vq/quotes/batch"]["get"]
         schema = op["responses"]["200"]["content"]["application/json"]["schema"]
+        assert schema["required"] == ["status", "data"]
         assert "data" in schema["properties"]
-        assert schema["properties"]["data"]["type"] == "array"
+        assert schema["properties"]["data"]["type"] == "object"
+        assert "422" in op["responses"]
 
 
 class TestFundamentalsEndpoints:
@@ -43,13 +45,13 @@ class TestFundamentalsEndpoints:
         assert ref.endswith("/Fundamental")
 
     def test_income_statement_has_period_param(self, spec: dict):
-        op = spec["paths"]["/vq/fundamentals/{symbol}/income"]["get"]
+        op = spec["paths"]["/vq/fundamentals/{symbol}/statements"]["get"]
         params = {p["name"]: p for p in op["parameters"]}
         assert "period" in params
         assert set(params["period"]["schema"]["enum"]) == {"annual", "quarterly"}
 
     def test_income_statement_has_limit_param(self, spec: dict):
-        op = spec["paths"]["/vq/fundamentals/{symbol}/income"]["get"]
+        op = spec["paths"]["/vq/fundamentals/{symbol}/statements"]["get"]
         params = {p["name"]: p for p in op["parameters"]}
         assert "limit" in params
         assert params["limit"]["schema"]["default"] == 4
@@ -61,15 +63,15 @@ class TestFundamentalsEndpoints:
 
 
 class TestTechnicalsEndpoint:
-    """Tests for /vq/technicals/{symbol}."""
+    """Tests for /vq/technical/{symbol}."""
 
     def test_technicals_has_indicators_param(self, spec: dict):
-        op = spec["paths"]["/vq/technicals/{symbol}"]["get"]
+        op = spec["paths"]["/vq/technical/{symbol}"]["get"]
         params = {p["name"]: p for p in op["parameters"]}
         assert "indicators" in params
 
     def test_technicals_has_interval_enum(self, spec: dict):
-        op = spec["paths"]["/vq/technicals/{symbol}"]["get"]
+        op = spec["paths"]["/vq/technical/{symbol}"]["get"]
         params = {p["name"]: p for p in op["parameters"]}
         interval = params["interval"]
         assert "enum" in interval["schema"]
@@ -79,20 +81,28 @@ class TestTechnicalsEndpoint:
 class TestNewsEndpoints:
     """Tests for /vq/news/* endpoints."""
 
-    def test_list_news_pagination(self, spec: dict):
-        op = spec["paths"]["/vq/news"]["get"]
+    def test_list_news_query_parameters(self, spec: dict):
+        op = spec["paths"]["/vq/news/{symbol}"]["get"]
         params = {p["name"]: p for p in op["parameters"]}
-        assert "cursor" in params
         assert "limit" in params
+        assert params["limit"]["schema"]["default"] == 10
+        assert params["limit"]["schema"]["minimum"] == 1
         assert params["limit"]["schema"]["maximum"] == 100
+        assert "refresh" in params
 
-    def test_list_news_symbol_filter(self, spec: dict):
-        op = spec["paths"]["/vq/news"]["get"]
+    def test_list_news_path_symbol(self, spec: dict):
+        op = spec["paths"]["/vq/news/{symbol}"]["get"]
         params = {p["name"]: p for p in op["parameters"]}
-        assert "symbols" in params
+        assert params["symbol"]["in"] == "path"
+
+    def test_list_news_response_matches_collector(self, spec: dict):
+        op = spec["paths"]["/vq/news/{symbol}"]["get"]
+        schema = op["responses"]["200"]["content"]["application/json"]["schema"]
+        assert schema["properties"]["articles"]["type"] == "array"
+        assert "count" in schema["properties"]
 
     def test_get_news_article_by_id(self, spec: dict):
-        op = spec["paths"]["/vq/news/{id}"]["get"]
+        op = spec["paths"]["/vq/news/articles/{id}"]["get"]
         params = {p["name"]: p for p in op["parameters"]}
         assert "id" in params
 
@@ -109,7 +119,10 @@ class TestScreenerEndpoint:
         assert "market_cap_min" in params
         assert "pe_min" in params
         assert "sector" in params
-        assert "country" in params
+        assert "beta_min" in params
+        assert "revenue_growth_max" in params
+        assert "industry" not in params
+        assert "country" not in params
         assert "sort_by" in params
         assert "sort_order" in params
 
@@ -122,7 +135,7 @@ class TestScreenerEndpoint:
     def test_screener_limit_max(self, spec: dict):
         op = spec["paths"]["/vq/screener"]["get"]
         params = {p["name"]: p for p in op.get("parameters", [])}
-        assert params["limit"]["schema"]["maximum"] == 200
+        assert params["limit"]["schema"]["maximum"] == 50
 
     def test_screener_has_422(self, spec: dict):
         op = spec["paths"]["/vq/screener"]["get"]
@@ -190,13 +203,13 @@ class TestOptionsEndpoints:
     """Tests for /vq/options/* endpoints."""
 
     def test_options_chain_has_expiration_filter(self, spec: dict):
-        op = spec["paths"]["/vq/options/{symbol}"]["get"]
+        op = spec["paths"]["/vq/options/{symbol}/chain"]["get"]
         params = {p["name"]: p for p in op["parameters"]}
         assert "expiration" in params
         assert params["expiration"]["schema"]["format"] == "date"
 
     def test_options_chain_has_type_filter(self, spec: dict):
-        op = spec["paths"]["/vq/options/{symbol}"]["get"]
+        op = spec["paths"]["/vq/options/{symbol}/chain"]["get"]
         params = {p["name"]: p for p in op["parameters"]}
         assert "type" in params
         assert set(params["type"]["schema"]["enum"]) == {"call", "put"}
@@ -213,17 +226,17 @@ class TestAnalystEndpoints:
     """Tests for /vq/analyst/* endpoints."""
 
     def test_consensus_returns_consensus_schema(self, spec: dict):
-        op = spec["paths"]["/vq/analyst/{symbol}/consensus"]["get"]
+        op = spec["paths"]["/vq/analyst-consensus/{symbol}"]["get"]
         ref = op["responses"]["200"]["content"]["application/json"]["schema"]["$ref"]
         assert ref.endswith("/AnalystConsensus")
 
     def test_price_targets_returns_array(self, spec: dict):
-        op = spec["paths"]["/vq/analyst/{symbol}/price-targets"]["get"]
+        op = spec["paths"]["/vq/analyst-targets/{symbol}"]["get"]
         schema = op["responses"]["200"]["content"]["application/json"]["schema"]
         assert schema["properties"]["data"]["type"] == "array"
 
     def test_ratings_has_limit(self, spec: dict):
-        op = spec["paths"]["/vq/analyst/{symbol}/ratings"]["get"]
+        op = spec["paths"]["/vq/upgrades-downgrades/{symbol}"]["get"]
         params = {p["name"]: p for p in op["parameters"]}
         assert "limit" in params
 
@@ -232,12 +245,12 @@ class TestEarningsEndpoints:
     """Tests for /vq/earnings/* endpoints."""
 
     def test_history_returns_array(self, spec: dict):
-        op = spec["paths"]["/vq/earnings/{symbol}/history"]["get"]
+        op = spec["paths"]["/vq/earnings/{symbol}"]["get"]
         schema = op["responses"]["200"]["content"]["application/json"]["schema"]
         assert schema["properties"]["data"]["type"] == "array"
 
     def test_history_has_limit(self, spec: dict):
-        op = spec["paths"]["/vq/earnings/{symbol}/history"]["get"]
+        op = spec["paths"]["/vq/earnings/{symbol}"]["get"]
         params = {p["name"]: p for p in op["parameters"]}
         assert "limit" in params
         assert params["limit"]["schema"]["default"] == 8
@@ -255,12 +268,12 @@ class TestInsiderEndpoints:
     """Tests for /vq/insider/* endpoints."""
 
     def test_transactions_returns_array(self, spec: dict):
-        op = spec["paths"]["/vq/insider/{symbol}/transactions"]["get"]
+        op = spec["paths"]["/vq/insider/{symbol}"]["get"]
         schema = op["responses"]["200"]["content"]["application/json"]["schema"]
         assert schema["properties"]["data"]["type"] == "array"
 
     def test_transactions_has_limit(self, spec: dict):
-        op = spec["paths"]["/vq/insider/{symbol}/transactions"]["get"]
+        op = spec["paths"]["/vq/insider/{symbol}"]["get"]
         params = {p["name"]: p for p in op["parameters"]}
         assert "limit" in params
 

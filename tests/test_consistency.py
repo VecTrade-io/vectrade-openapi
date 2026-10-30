@@ -95,8 +95,8 @@ class TestCrossSpecConsistency:
         assert "contact" in spec["info"]
         assert "contact" in asyncapi["info"]
 
-    def test_rest_uses_bearer_auth(self, spec: dict):
-        assert "BearerAuth" in spec["components"]["securitySchemes"]
+    def test_rest_uses_api_key_auth(self, spec: dict):
+        assert "ApiKeyAuth" in spec["components"]["securitySchemes"]
 
     def test_ws_uses_bearer_auth(self, asyncapi: dict):
         assert "bearerToken" in asyncapi["components"]["securitySchemes"]
@@ -149,7 +149,7 @@ class TestResponseConsistency:
 
     def test_list_endpoints_use_data_wrapper(self, spec: dict):
         """List endpoints should wrap results in a 'data' array."""
-        list_ops = ["listNews", "listWebhooks", "getEarningsCalendar",
+        list_ops = ["listWebhooks", "getEarningsCalendar",
                      "getInsiderTransactions", "getAnalystPriceTargets",
                      "getAnalystRatings", "getEarningsHistory"]
         for path, methods in spec["paths"].items():
@@ -166,7 +166,7 @@ class TestResponseConsistency:
 
     def test_paginated_endpoints_have_page_info(self, spec: dict):
         """Paginated list endpoints should include page_info."""
-        paginated_ops = ["listNews", "runScreener"]
+        paginated_ops = ["runScreener"]
         for path, methods in spec["paths"].items():
             for method, op in methods.items():
                 if not isinstance(op, dict):

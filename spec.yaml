@@ -28,6 +28,22 @@ servers:
   - url: https://api.vectrade.io/v1
     description: Production & Sandbox (mode determined by API key prefix)
 
+tags:
+  - name: Quotes
+  - name: Fundamentals
+  - name: Technicals
+  - name: News
+  - name: Screener
+  - name: AI
+  - name: Webhooks
+  - name: Options
+  - name: Analyst
+  - name: Earnings
+  - name: Insider
+  - name: Developer
+  - name: Sentiment
+  - name: ETF
+
 security:
   - ApiKeyAuth: []
 
@@ -68,15 +84,15 @@ paths:
     get:
       operationId: getBatchQuotes
       summary: Get quotes for multiple symbols
-      description: Retrieve real-time quotes for up to 50 symbols in a single request.
+      description: Retrieve real-time quotes for up to 20 symbols in a single request.
       tags: [Quotes]
       parameters:
-        - name: symbols
+        - name: tickers
           in: query
           required: true
           schema:
             type: string
-          description: Comma-separated symbols (max 50)
+          description: Comma-separated ticker symbols (max 20)
           example: AAPL,GOOGL,MSFT
       responses:
         "200":
@@ -85,13 +101,19 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [status, data]
                 properties:
+                  status:
+                    type: string
+                    enum: [ok]
                   data:
-                    type: array
-                    items:
+                    type: object
+                    additionalProperties:
                       $ref: "#/components/schemas/Quote"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
         "429":
           $ref: "#/components/responses/RateLimited"
 
@@ -257,22 +279,31 @@ paths:
       description: Retrieve a paginated list of financial news articles, optionally filtered by symbols.
       tags: [News]
       parameters:
-        - name: symbols
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+          example: AAPL
+        - name: market
           in: query
           schema:
             type: string
-          description: Filter by symbols (comma-separated)
+            default: NASDAQ
+          description: Market used when collecting news for the symbol
         - name: limit
           in: query
           schema:
             type: integer
-            default: 20
+            minimum: 1
+            default: 10
             maximum: 100
-        - name: cursor
+        - name: refresh
           in: query
           schema:
-            type: string
-          description: Pagination cursor
+            type: boolean
+            default: false
+          description: Bypass the news cache and fetch fresh data
       responses:
         "200":
           description: News articles
@@ -281,18 +312,27 @@ paths:
               schema:
                 type: object
                 properties:
-                  data:
+                  ticker:
+                    type: string
+                  articles:
                     type: array
                     items:
                       $ref: "#/components/schemas/NewsArticle"
-                  page_info:
-                    $ref: "#/components/schemas/PageInfo"
+                  count:
+                    type: integer
+                  timestamp:
+                    type: string
+                    format: date-time
+                  source:
+                    type: string
+                  note:
+                    type: string
         "401":
           $ref: "#/components/responses/Unauthorized"
         "429":
           $ref: "#/components/responses/RateLimited"
 
-  /vq/news/{id}:
+  /vq/news/articles/{id}:
     get:
       operationId: getNewsArticle
       summary: Get a single news article
@@ -345,33 +385,67 @@ paths:
           schema:
             type: number
           description: Maximum P/E ratio
+        - name: change_min
+          in: query
+          schema:
+            type: number
+          description: Minimum percentage price change
+        - name: change_max
+          in: query
+          schema:
+            type: number
+          description: Maximum percentage price change
         - name: dividend_yield_min
           in: query
           schema:
             type: number
           description: Minimum dividend yield
+        - name: dividend_yield_max
+          in: query
+          schema:
+            type: number
+          description: Maximum dividend yield
+        - name: beta_min
+          in: query
+          schema:
+            type: number
+          description: Minimum beta
+        - name: beta_max
+          in: query
+          schema:
+            type: number
+          description: Maximum beta
+        - name: revenue_growth_min
+          in: query
+          schema:
+            type: number
+          description: Minimum year-over-year revenue growth percentage
+        - name: revenue_growth_max
+          in: query
+          schema:
+            type: number
+          description: Maximum year-over-year revenue growth percentage
+        - name: rsi_min
+          in: query
+          schema:
+            type: number
+          description: Minimum 14-period RSI
+        - name: rsi_max
+          in: query
+          schema:
+            type: number
+          description: Maximum 14-period RSI
         - name: sector
           in: query
           schema:
             type: string
           description: Filter by sector
-        - name: industry
-          in: query
-          schema:
-            type: string
-          description: Filter by industry
-        - name: country
-          in: query
-          schema:
-            type: string
-            default: US
-          description: Country code filter
         - name: sort_by
           in: query
           schema:
             type: string
             default: market_cap
-            enum: [market_cap, pe_ratio, dividend_yield, volume, change_pct]
+            enum: [market_cap, pe_ratio, dividend_yield, volume, change_pct, rsi_14, beta, revenue_growth_yoy]
           description: Sort field
         - name: sort_order
           in: query
@@ -385,12 +459,6 @@ paths:
           schema:
             type: integer
           description: Minimum trading volume
-        - name: exchange
-          in: query
-          schema:
-            type: string
-            enum: [NYSE, NASDAQ, AMEX]
-          description: Exchange filter
         - name: cursor
           in: query
           schema:
@@ -400,8 +468,9 @@ paths:
           in: query
           schema:
             type: integer
-            default: 50
-            maximum: 200
+            default: 20
+            minimum: 1
+            maximum: 50
           description: Results per page
       responses:
         "200":
@@ -410,7 +479,11 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [status, data, page_info]
                 properties:
+                  status:
+                    type: string
+                    enum: [ok]
                   data:
                     type: array
                     items:
@@ -850,28 +923,27 @@ paths:
     get:
       operationId: listApiKeys
       summary: List API keys
-      description: List all API keys for the authenticated user. Raw key values are never returned.
+      description: List API keys owned by the authenticated user. Supports a session JWT or VQ API key; raw key values are never returned.
       tags: [Developer]
       responses:
         "200":
-          description: List of API keys
+          description: API keys owned by the authenticated user
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/ApiKey"
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApiKey"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "429":
           $ref: "#/components/responses/RateLimited"
     post:
       operationId: createApiKey
       summary: Create API key
-      description: Create a new API key. The raw key is returned only once in the response — store it securely.
+      description: Create an API key owned by the authenticated user. The raw key is returned only once.
       tags: [Developer]
       requestBody:
         required: true
@@ -898,19 +970,23 @@ paths:
                 $ref: "#/components/schemas/ApiKeyCreated"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "422":
           $ref: "#/components/responses/ValidationError"
         "429":
           $ref: "#/components/responses/RateLimited"
 
-  /vq/developer/keys/{keyId}:
+  /vq/developer/keys/{key_id}:
     delete:
       operationId: revokeApiKey
       summary: Revoke API key
       description: Permanently revoke an API key. This action cannot be undone.
       tags: [Developer]
       parameters:
-        - name: keyId
+        - name: key_id
           in: path
           required: true
           schema:
@@ -920,6 +996,8 @@ paths:
           description: Key revoked
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
         "429":
@@ -929,7 +1007,7 @@ paths:
     get:
       operationId: getUsage
       summary: Get API usage
-      description: Get aggregated API usage statistics for the current billing period.
+      description: Get request, AI token, and overage usage for the current billing period. Supports a session JWT or VQ API key.
       tags: [Developer]
       responses:
         "200":
@@ -940,6 +1018,8 @@ paths:
                 $ref: "#/components/schemas/UsageResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "429":
           $ref: "#/components/responses/RateLimited"
 
@@ -947,7 +1027,7 @@ paths:
     get:
       operationId: getDailyUsage
       summary: Get daily usage breakdown
-      description: Get per-day, per-endpoint usage breakdown for the current billing period.
+      description: Get per-day, per-endpoint usage breakdown. Supports a session JWT or VQ API key.
       tags: [Developer]
       parameters:
         - name: days
@@ -963,14 +1043,13 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/DailyUsage"
+                type: array
+                items:
+                  $ref: "#/components/schemas/DailyUsage"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "429":
           $ref: "#/components/responses/RateLimited"
 
@@ -978,7 +1057,7 @@ paths:
     get:
       operationId: getPlan
       summary: Get subscription plan
-      description: Get the authenticated user's active subscription details.
+      description: Get the authenticated user's active plan and limits. Supports a session JWT or VQ API key.
       tags: [Developer]
       responses:
         "200":
@@ -989,6 +1068,8 @@ paths:
                 $ref: "#/components/schemas/PlanResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "429":
           $ref: "#/components/responses/RateLimited"
 
@@ -996,7 +1077,7 @@ paths:
     get:
       operationId: getQuota
       summary: Get API quota
-      description: Check remaining API and token quota for the current billing period.
+      description: Check remaining request quota for the current billing period. Supports a session JWT or VQ API key.
       tags: [Developer]
       responses:
         "200":
@@ -1007,6 +1088,8 @@ paths:
                 $ref: "#/components/schemas/QuotaResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "429":
           $ref: "#/components/responses/RateLimited"
 
@@ -1061,6 +1144,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
 
   /vq/sentiment/{symbol}:
     get:
@@ -1111,6 +1196,10 @@ paths:
                         type: integer
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
 
   /vq/quotes/{symbol}/history:
     get:
@@ -1164,6 +1253,10 @@ paths:
                           type: number
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
 
   /vq/etf/{symbol}:
     get:
@@ -1214,6 +1307,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
 
 components:
   securitySchemes:
@@ -1422,61 +1517,31 @@ components:
     NewsArticle:
       type: object
       properties:
-        id:
+        uuid:
           type: string
-        title:
+        headline:
           type: string
         summary:
-          type: string
+          type: [string, "null"]
         source:
-          type: string
+          type: [string, "null"]
         url:
-          type: string
+          type: [string, "null"]
           format: uri
-        publishedAt:
-          type: string
+        datetime:
+          type: [string, "null"]
           format: date-time
-        symbols:
+        related:
           type: array
           items:
             type: string
+        type:
+          type: string
+        image:
+          type: string
         sentiment:
           type: string
           enum: [positive, negative, neutral]
-
-    ScreenerFilters:
-      type: object
-      properties:
-        marketCapMin:
-          type: number
-        marketCapMax:
-          type: number
-        peMin:
-          type: number
-        peMax:
-          type: number
-        sector:
-          type: string
-        industry:
-          type: string
-        dividendYieldMin:
-          type: number
-        volumeMin:
-          type: integer
-        exchange:
-          type: string
-          enum: [NYSE, NASDAQ, AMEX]
-        country:
-          type: string
-          default: US
-        sortBy:
-          type: string
-          default: market_cap
-          enum: [market_cap, pe_ratio, dividend_yield, volume, change_pct]
-        sortOrder:
-          type: string
-          default: desc
-          enum: [asc, desc]
 
     ScreenerResult:
       type: object
@@ -1491,32 +1556,38 @@ components:
           type: number
         marketCap:
           type: number
+          nullable: true
         peRatio:
           type: number
           nullable: true
         dividendYield:
           type: number
           nullable: true
+        beta:
+          type: number
+          nullable: true
+        revenueGrowthYoy:
+          type: number
+          nullable: true
         sector:
           type: string
-        industry:
-          type: string
+          nullable: true
         volume:
           type: integer
+          nullable: true
         rsi14:
           type: number
           nullable: true
 
     PageInfo:
       type: object
+      required: [has_next, cursor]
       properties:
-        hasNext:
+        has_next:
           type: boolean
         cursor:
           type: string
           nullable: true
-        totalCount:
-          type: integer
 
     Webhook:
       type: object
@@ -1752,64 +1823,86 @@ components:
 
     ApiKey:
       type: object
-      required: [id, keyPrefix, label, scopes, createdAt]
+      required: [id, key_prefix, label, scopes, status, rate_limit_rpm, created_at]
       properties:
         id:
           type: string
-        keyPrefix:
+        key_prefix:
           type: string
           description: First 8 characters of the key for identification
         label:
           type: string
         scopes:
-          type: array
-          items:
-            type: string
-        createdAt:
+          type: string
+          description: Comma-separated scopes or `*`
+        status:
+          type: string
+          enum: [ACTIVE, REVOKED, EXPIRED]
+        rate_limit_rpm:
+          type: integer
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
           type: string
           format: date-time
 
     ApiKeyCreated:
       type: object
-      required: [id, keyPrefix, label, scopes, rawKey, createdAt]
+      required: [id, key_prefix, label, scopes, raw_key, created_at]
       properties:
         id:
           type: string
-        keyPrefix:
+        key_prefix:
           type: string
         label:
           type: string
         scopes:
-          type: array
-          items:
-            type: string
-        rawKey:
+          type: string
+        raw_key:
           type: string
           description: Full API key — returned only once on creation
-        createdAt:
+        created_at:
           type: string
           format: date-time
 
     UsageResponse:
       type: object
+      required: [period, total_requests, ai_requests, error_count, tokens_used, token_quota, token_remaining, overage_calls, metering_type, plan_name, quota_limit, quota_remaining]
       properties:
         period:
           type: string
-        totalRequests:
+        total_requests:
           type: integer
-        aiRequests:
+        ai_requests:
           type: integer
-        errorCount:
+        error_count:
           type: integer
-        tokensUsed:
+        tokens_used:
           type: integer
-        quotaLimit:
+        token_quota:
           type: integer
-        quotaRemaining:
+        token_remaining:
+          type: integer
+        overage_calls:
+          type: integer
+        metering_type:
+          type: string
+        plan_name:
+          type: string
+        quota_limit:
+          type: integer
+        quota_remaining:
           type: integer
 
     DailyUsage:
       type: object
+      required: [day, endpoint, method, call_count, error_count, total_latency_ms, tokens_used]
       properties:
         day:
           type: string
@@ -1818,54 +1911,94 @@ components:
           type: string
         method:
           type: string
-        callCount:
+        call_count:
           type: integer
-        errorCount:
+        error_count:
           type: integer
-        tokensUsed:
+        total_latency_ms:
+          type: number
+        tokens_used:
           type: integer
 
     PlanResponse:
       type: object
+      required: [id, plan_id, plan_name, max_keys, monthly_quota, rate_limit_rpm, rate_limit_rps, includes_ai, monthly_tokens, ai_prompts_per_day, metering_type, overage_policy, overage_cap_multiplier, monthly_price_usd, status, current_period_start, current_period_end, created_at]
       properties:
         id:
           type: string
-        planId:
+        plan_id:
           type: string
-        planName:
+        plan_name:
           type: string
+        max_keys:
+          type: integer
+        monthly_quota:
+          type: integer
+        rate_limit_rpm:
+          type: integer
+        rate_limit_rps:
+          type: integer
+        includes_ai:
+          type: boolean
+        monthly_tokens:
+          type: integer
+        ai_prompts_per_day:
+          type: integer
+        metering_type:
+          type: string
+        overage_policy:
+          type: string
+        overage_cap_multiplier:
+          type: number
+        monthly_price_usd:
+          type: number
         status:
           type: string
-        currentPeriodStart:
+        current_period_start:
           type: string
           format: date-time
-        currentPeriodEnd:
+        current_period_end:
           type: string
           format: date-time
-        createdAt:
+        created_at:
           type: string
           format: date-time
 
     QuotaResponse:
       type: object
+      required: [plan_id, monthly_quota, used, remaining, usage_pct, overage_policy, reset_at]
       properties:
-        planId:
+        plan_id:
           type: string
-        monthlyQuota:
+        monthly_quota:
           type: integer
         used:
           type: integer
         remaining:
           type: integer
-        overagePolicy:
+        usage_pct:
+          type: number
+        overage_policy:
           type: string
-        resetAt:
+        reset_at:
           type: string
           format: date-time
 
   responses:
     Unauthorized:
       description: Authentication failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: Insufficient permissions, subscription access, or quota
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Conflict:
+      description: Resource conflict
       content:
         application/json:
           schema:
