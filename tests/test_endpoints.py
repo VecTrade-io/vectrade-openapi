@@ -5,6 +5,22 @@ from __future__ import annotations
 import pytest
 
 
+def test_public_openapi_download_contract(spec: dict):
+    operation = spec["paths"]["/vq/openapi"]["get"]
+    assert operation["operationId"] == "getPublicOpenApi"
+    assert operation["parameters"][0]["name"] == "version"
+    assert "200" in operation["responses"]
+    assert "404" in operation["responses"]
+
+
+def test_crypto_quotes_allow_unavailable_fields(spec: dict):
+    quote = spec["components"]["schemas"]["Quote"]
+    assert "change" not in quote["required"]
+    assert quote["properties"]["change"]["nullable"]
+    assert quote["properties"]["previousClose"]["nullable"]
+    assert "market" in quote["properties"]
+
+
 class TestQuotesEndpoints:
     """Tests for /vq/quotes/* endpoints."""
 

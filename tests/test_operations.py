@@ -106,7 +106,7 @@ class TestOperationIds:
             assert "-" not in oid, f"{oid} should not contain hyphens"
 
     def test_operation_count(self, operations):
-        assert len(operations) == 33
+        assert len(operations) == 34
 
 
 class TestErrorResponses:

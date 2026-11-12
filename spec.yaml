@@ -48,6 +48,33 @@ security:
   - ApiKeyAuth: []
 
 paths:
+  /vq/openapi:
+    get:
+      operationId: getPublicOpenApi
+      summary: Download the deployed public API contract
+      description: Returns the current deployed VQ OpenAPI document for SDK and CLI contract inspection. Historical contract versions are not retained by this endpoint.
+      tags: [Developer]
+      parameters:
+        - name: version
+          in: query
+          schema:
+            type: string
+            default: latest
+      responses:
+        "200":
+          description: Current public OpenAPI document
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
   /vq/quotes/{symbol}:
     get:
       operationId: getQuote
@@ -579,6 +606,9 @@ paths:
                   type: string
                   format: uri
                   description: HTTPS endpoint to receive events
+                description:
+                  type: string
+                  maxLength: 255
                 events:
                   type: array
                   items:
@@ -1321,7 +1351,7 @@ components:
   schemas:
     Quote:
       type: object
-      required: [symbol, price, change, changePct, volume, timestamp]
+      required: [symbol, price, changePct, volume, timestamp]
       properties:
         symbol:
           type: string
@@ -1329,6 +1359,8 @@ components:
           type: number
         change:
           type: number
+          nullable: true
+          description: Absolute price change when supplied by the provider; unavailable values are not inferred.
         changePct:
           type: number
         volume:
@@ -1341,9 +1373,14 @@ components:
           type: number
         previousClose:
           type: number
+          nullable: true
+          description: Previous session close when supplied by the provider.
         marketCap:
           type: number
           nullable: true
+        market:
+          type: string
+          description: Market identifier supplied by the provider, including crypto or forex.
         timestamp:
           type: string
           format: date-time
@@ -1597,6 +1634,9 @@ components:
         url:
           type: string
           format: uri
+        description:
+          type: string
+          nullable: true
         events:
           type: array
           items:

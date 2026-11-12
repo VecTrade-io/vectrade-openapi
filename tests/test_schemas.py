@@ -8,7 +8,7 @@ import pytest
 
 # Schemas that must define 'required' fields
 SCHEMAS_WITH_REQUIRED = {
-    "Quote": ["symbol", "price", "change", "changePct", "volume", "timestamp"],
+    "Quote": ["symbol", "price", "changePct", "volume", "timestamp"],
     "Error": ["error"],
     "AnalystConsensus": ["symbol", "consensus", "totalAnalysts"],
     "EarningsResult": ["symbol", "date", "fiscalQuarter"],
